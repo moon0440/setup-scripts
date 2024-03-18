@@ -6,41 +6,33 @@ if [[ $(grep 'NAME=' /etc/os-release) != *"Ubuntu"* ]] || [[ $(grep 'VERSION_ID=
     exit 1
 fi
 
-# Determine whether to use sudo
-SUDO=''
-if [ "$(id -u)" -ne 0 ]; then
-    SUDO='sudo'
-fi
-
-packages=("nvim" "ripgrep" "gcc" "make" "npm")
-declare -A package_names=( ["nvim"]="neovim" ["ripgrep"]="ripgrep" ["gcc"]="gcc" ["make"]="make" ["npm"]="npm")
-packages_to_install=()
-
-for pkg in "${packages[@]}"; do
-    if ! command -v $pkg &> /dev/null; then
-        echo "$pkg is not installed. Marking for installation."
-        packages_to_install+=("${package_names[$pkg]}")
-    else
-        echo "$pkg is already installed."
-    fi
-done
-
-if [ ${#packages_to_install[@]} -ne 0 ]; then
-    echo "Installing missing packages..."
-    ${SUDO} apt update
-    for pkg in "${packages_to_install[@]}"; do
-        ${SUDO} apt install -y $pkg
-    done
+# Install Nix if not already installed
+if ! command -v nix &> /dev/null; then
+    echo "Nix is not installed. Installing Nix..."
+    # Using sh to execute the Nix installation script
+    sh <(curl -L https://nixos.org/nix/install) --daemon
+    # Source nix script to ensure nix commands work in the current session
+    . /etc/profile.d/nix.sh
 else
-    echo "All packages are already installed."
+    echo "Nix is already installed."
 fi
+
+# Define packages to install via Nix
+packages=("neovim" "ripgrep" "gcc" "make" "nodejs")
+
+# Update Nix packages list
+echo "Updating Nix package database..."
+nix-channel --update
+
+# Install packages
+echo "Installing packages with Nix..."
+nix-env -iA nixpkgs.${packages[@]}
 
 # Setting alias for nvim as nv if it doesn't already exist in ~/.bashrc
-if grep -q "alias nv='nvim'" ~/.bashrc; then
-    echo "Alias for nvim already exists in ~/.bashrc."
-else
+if ! grep -q "alias nv='nvim'" ~/.bashrc; then
     echo "Adding alias for nvim as nv in ~/.bashrc..."
     echo "alias nv='nvim'" >> ~/.bashrc
+    # Informing the user about the new alias
     echo "Alias added. You might need to restart your terminal or source ~/.bashrc to use the alias."
 fi
 
@@ -52,12 +44,12 @@ if [ -d "$HOME/.config/nvim" ]; then
         echo "Removing existing NvChad installation..."
         rm -rf "$HOME/.config/nvim"
         rm -rf "$HOME/.local/share/nvim"
-        echo "Installing NvChad..."
-        git clone https://github.com/NvChad/starter ~/.config/nvim && nvim
+        echo "Reinstalling NvChad..."
+        git clone https://github.com/NvChad/NvChad ~/.config/nvim && nvim --headless +PackerSync +qa
     else
         echo "Skipping NvChad installation."
     fi
 else
     echo "Installing NvChad..."
-    git clone https://github.com/NvChad/starter ~/.config/nvim && nvim
+    git clone https://github.com/NvChad/NvChad ~/.config/nvim && nvim --headless +PackerSync +qa
 fi
