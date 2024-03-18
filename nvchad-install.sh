@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -ex
 
 # Check for Ubuntu 20.04 OS
 if [[ $(grep 'NAME=' /etc/os-release) != *"Ubuntu"* ]] || [[ $(grep 'VERSION_ID=' /etc/os-release) != *"20.04"* ]]; then
